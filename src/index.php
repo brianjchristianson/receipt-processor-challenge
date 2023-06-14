@@ -1,5 +1,6 @@
 <?php
 use \core\Util;
+use \core\APIResponse;
 
 spl_autoload_register(function ($class) {
     $nameparts = explode("\\", $class);
@@ -13,7 +14,6 @@ spl_autoload_register(function ($class) {
 $parsed = Util::parse_api_path($_REQUEST['api']);
 $classname = "\\api\\{$parsed['component']}\\{$parsed['action']}";
 $request = new $classname();
-
 $function = strtoupper($_SERVER['REQUEST_METHOD']);
 
 //Retrieve request body, and, if it exists put it to the front of the arguments list
@@ -22,13 +22,17 @@ $args = empty($request_body) ? $parsed["args"] : [$request_body, ...$parsed["arg
 
 //Call the API method
 try {
+    if (!in_array($function, ['GET', 'POST'])) {
+        throw new \core\MethodNotSupportedException();
+    }
+
     $result = $request->$function(...$args);
 }
 catch (\core\MethodNotSupportedException $e) {
-    $result = new \core\APIResponse(json_encode(["message" => "Method not allowed at this point"]), 405);
+    $result = new APIResponse(json_encode(["message" => "Method not allowed at this point"]), 405);
 }
 catch (Exception $e) {
-    $result = new \core\APIResponse(json_encode(["message" => "Unexpected Error"]), 500);
+    $result = new APIResponse(json_encode(["message" => "Unexpected Error"]), 500);
 }
 
 //Output response
